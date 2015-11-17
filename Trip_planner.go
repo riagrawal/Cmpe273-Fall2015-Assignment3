@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -7,19 +8,47 @@ import (
 	"log"
 	"strconv"
 	"net/http"
+	"github.com/julienschmidt/httprouter"
+	"gopkg.in/mgo.v2"
+    "gopkg.in/mgo.v2/bson"
+    "os"
 )
 
-const (
+/*const (
 	WhiteHouseLat  float64 = 38.897939
 	WhiteHouseLong float64 = -77.036541
 	USCapitolLat   float64 = 38.890152
 	USCapitolLong  float64 = -77.009096
-)
+)*/
 
 const (
 	// Uber API endpoint
 	APIUrl string = "https://sandbox-api.uber.com/v1/%s%s"
 )
+
+type Input_locations struct {
+
+Start_loc string		`json:"starting_from_location_id"`
+Remaining_loc []string  `json:"location_ids"`
+
+}
+
+type (  
+    UserResponse struct {
+        Id      bson.ObjectId          `json:"id" bson:"_id"`
+        Name    string       `json:"name" bson:"name"`
+        Address string       `json:"address" bson:"address"`
+        City    string       `json:"city" bson:"city"`
+        State   string       `json:"state" bson:"state"`
+        Zip     string       `json:"zip" bson:"zip"`
+        Cc      Coordinate   `json:"coordinate" bson:"coordinate"`
+    }
+)
+
+type Coordinate struct{
+        Lat     float64      `json:"lat" bson:"lat"`
+        Lng     float64      `json:"lng" bson:"lng"`
+}
 
 // Getter defines the behavior for all HTTP Get requests
 type Getter interface {
@@ -175,7 +204,56 @@ func (c *Client) getRequest(endpoint string, params map[string]string) []byte {
 	return data
 }
 
+
+
 func main() {
+
+	//uber_api()
+	mux := httprouter.New()
+    mux.POST("/trips",post)
+    //mux.GET("/locations/:id",get)
+    //mux.PUT("/locations/:id",put)
+    server := http.Server{
+            Addr:        "0.0.0.0:8080",
+            Handler: mux,
+    }
+    server.ListenAndServe()
+	
+}
+
+func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
+    log.Println("inside post")
+    body, err := ioutil.ReadAll(req.Body)
+    if err != nil {
+        http.Error(rw, err.Error(), http.StatusInternalServerError)
+        return
+    }
+   var u Input_locations
+   err = json.Unmarshal(body, &u)
+    if (err != nil ) {
+        http.Error(rw, "Bad Request, check request payload", http.StatusBadRequest)
+        return
+    }
+    oid := bson.ObjectIdHex(u.Start_loc)
+    sess, err := mgo.Dial("mongodb://Richa:Indore#1@ds041934.mongolab.com:41934/assignment_2_db")
+    if err != nil {
+       fmt.Printf("Can't connect to mongo, go error %v\n", err)
+       os.Exit(1)
+    }
+    defer sess.Close()
+    sess.SetSafe(&mgo.Safe{})
+    collection := sess.DB("assignment_2_db").C("loc")
+    var user UserResponse
+    err = collection.Find(bson.M{"_id":oid}).One(&user)
+    if err != nil {
+       fmt.Fprintf(rw,"Record not found",err)
+       return
+    }  
+    
+}
+
+func uber_api(){
+
 	// Read API auth options
 	var options RequestOptions
 	options.ServerToken = "VlGEE0x4Vy_xQ1-LMobj-4i6_xcv1Uo-mIlRNefb"
