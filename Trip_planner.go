@@ -27,6 +27,25 @@ Remaining_loc []string  `json:"location_ids"`
 
 }
 
+type Post_response struct{
+
+Id_post			bson.ObjectId    `json:"id" bson:"_id"`
+Status 			string 			`json:"status" bson:"status"`		
+Start_loc       string          `json:"starting_from_location_id" bson:"starting_from_location_id"`
+Best_route		[]string        `json:"best_route_location_ids" bson:"best_route_location_ids"`
+Total_uber_cost int 			`json:"total_uber_costs" bson:"total_uber_costs"`
+Total_uber_duration int 		`json:"total_uber_duration" bson:"total_uber_duration"`
+Total_distance	float64			`json:"total_distance" bson:"total_distance"`
+
+}
+
+type Uber_api_response struct {
+
+	Uber_distance 	float64
+	Uber_duration 	int
+	Uber_cost		int
+}
+
 type (  
     UserResponse struct {
         Id      bson.ObjectId          `json:"id" bson:"_id"`
@@ -228,21 +247,23 @@ func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
     start := u.Start_loc
 	rest_loc = u.Remaining_loc
 	i:= len(u.Remaining_loc)-1
-	var temp = make([]int,i+1)
+	var temp = make([]Uber_api_response,i+1)
 	var route = make ([]string,i+1)
 	var j int
 	total_cost := 0
+	total_dist := 0.0
+	total_duration := 0
 	for i!=-1 {
 		for j=0; j<=i; j++ {
 		    temp[j] = uber_api(start, rest_loc[j])
 
 		}
-	min := temp[0]
+	min := temp[0].Uber_cost
 	index :=0
 	var k int
 	for k = 0; k < len(temp); k++{
-			if temp[k]<min {
-			min = temp[k]
+			if temp[k].Uber_cost<min {
+			min = temp[k].Uber_cost
 			index = k
 		}
 
@@ -256,17 +277,33 @@ func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
 			j=j+1
 		}
 	}
-	total_cost = total_cost + temp[index]
+	total_cost = total_cost + temp[index].Uber_cost
+	total_dist = total_dist + temp[index].Uber_distance
+	total_duration = total_duration + temp[index].Uber_duration
 	length := i
-	temp = make([]int,length)
+	temp = make([]Uber_api_response,length)
     i=i-1
 
 }
-    log.Println ("total cost is : ", total_cost)
-    log.Println ("best route : ",route)
+	var final_response Post_response
+	final_response.Id_post = bson.NewObjectId()
+	final_response.Total_uber_cost = total_cost
+	final_response.Total_uber_duration = total_duration
+	final_response.Total_distance = total_dist
+	final_response.Start_loc = u.Start_loc
+	final_response.Best_route = route
+	final_response.Status = "Planning"
+    /*log.Println ("total cost is : ", total_cost)
+    log.Println ("total distance is : ", total_dist)
+    log.Println("total duration is : ", total_duration)
+    log.Println ("best route : ",route)*/
+    uj, _ := json.Marshal(final_response)
+  	rw.Header().Set("Content-Type", "application/json")
+  	rw.WriteHeader(201)
+  	fmt.Fprintf(rw, "%s", uj)
 }
 
-func uber_api(Start_loc string,Remaining_loc string) int{
+func uber_api(Start_loc string,Remaining_loc string) Uber_api_response{
 
 	oid1:=bson.ObjectIdHex(Start_loc)
 	oid2:=bson.ObjectIdHex(Remaining_loc)
@@ -317,15 +354,13 @@ func uber_api(Start_loc string,Remaining_loc string) int{
 	if e := client.Get(pe); e != nil {
 		log.Fatal(e)
 	}
-	var price_estimate int
+	//var price_estimate int
+	var uber_response Uber_api_response
 	for _, price := range pe.Prices {
 		if price.ProductId == productid{
-		//fmt.Println(price.DisplayName + ": " + price.Estimate + "; Surge: " + strconv.FormatFloat(price.SurgeMultiplier, 'f', 2, 32))
-		//fmt.Println("display name : ",price.DisplayName)
-		//fmt.Println("Distance: ",price.Distance)
-		//fmt.Println("Duration : ",price.Duration)
-		//log.Println("Estimate : ",price.LowEstimate)
-		price_estimate = price.LowEstimate
+		uber_response.Uber_cost = price.LowEstimate
+		uber_response.Uber_duration= price.Duration
+		uber_response.Uber_distance = price.Distance
 		}
 	}
 
@@ -345,6 +380,7 @@ func uber_api(Start_loc string,Remaining_loc string) int{
 			fmt.Print("\n")
 		}
 	}
-	//log.Println ("inside price : ", price_estimate)
-	return price_estimate
+	//log.Println ("inside price : ", uber_response.Uber_cost)
+	//log.Println ("inside distance : ", uber_response.Uber_distance)
+	return uber_response
 }
