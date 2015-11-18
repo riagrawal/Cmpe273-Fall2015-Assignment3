@@ -13,6 +13,7 @@ import (
 	"gopkg.in/mgo.v2"
     "gopkg.in/mgo.v2/bson"
     "os"
+    "math"
 )
 
 const (
@@ -222,12 +223,44 @@ func main() {
 
 	mux := httprouter.New()
     mux.POST("/trips",post)
+    mux.GET("/trips/:id",get)
     server := http.Server{
             Addr:        "0.0.0.0:8080",
             Handler: mux,
     }
     server.ListenAndServe()
 	
+}
+
+func get(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
+    log.Println("inside Get")
+    identifier := p.ByName("id")
+    //log.Println("id is : ", identifier)
+    if !bson.IsObjectIdHex(identifier) {
+        rw.WriteHeader(404)
+        return
+    }
+    oid := bson.ObjectIdHex(identifier)
+    log.Println("id is : ", oid)
+    sess, err := mgo.Dial("mongodb://Richa:Indore#1@ds041934.mongolab.com:41934/assignment_2_db")
+    if err != nil {
+       fmt.Printf("Can't connect to mongo, go error %v\n", err)
+       os.Exit(1)
+    }
+    defer sess.Close()
+    sess.SetSafe(&mgo.Safe{})
+    collection := sess.DB("assignment_2_db").C("routes")
+    var get_response Post_response
+    err = collection.Find(bson.M{"_id":oid}).One(&get_response)
+    if err != nil {
+    // handle error
+       fmt.Fprintf(rw,"Record not found",err)
+       return
+    }  
+    uj, _ := json.Marshal(get_response)
+    rw.Header().Set("Content-Type", "application/json")
+    rw.WriteHeader(200)
+    fmt.Fprintf(rw, "%s", uj)
 }
 
 func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
@@ -289,14 +322,11 @@ func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	final_response.Id_post = bson.NewObjectId()
 	final_response.Total_uber_cost = total_cost
 	final_response.Total_uber_duration = total_duration
-	final_response.Total_distance = total_dist
+	final_response.Total_distance = math.Ceil(total_dist)
 	final_response.Start_loc = u.Start_loc
 	final_response.Best_route = route
 	final_response.Status = "Planning"
-    /*log.Println ("total cost is : ", total_cost)
-    log.Println ("total distance is : ", total_dist)
-    log.Println("total duration is : ", total_duration)
-    log.Println ("best route : ",route)*/
+	Insert_to_mongodb(final_response)
     uj, _ := json.Marshal(final_response)
   	rw.Header().Set("Content-Type", "application/json")
   	rw.WriteHeader(201)
@@ -380,7 +410,23 @@ func uber_api(Start_loc string,Remaining_loc string) Uber_api_response{
 			fmt.Print("\n")
 		}
 	}
-	//log.Println ("inside price : ", uber_response.Uber_cost)
-	//log.Println ("inside distance : ", uber_response.Uber_distance)
 	return uber_response
+}
+
+
+func Insert_to_mongodb(final_response Post_response){
+  sess, err := mgo.Dial("mongodb://Richa:Indore#1@ds041934.mongolab.com:41934/assignment_2_db")
+  if err != nil {
+    fmt.Printf("Can't connect to mongo, go error %v\n", err)
+    os.Exit(1)
+  }
+  defer sess.Close()
+  sess.SetSafe(&mgo.Safe{})
+  collection := sess.DB("assignment_2_db").C("routes")
+  err = collection.Insert(final_response)
+  if (err != nil ) {
+  		log.Println("error in inserting to database",err)
+        
+    }
+
 }
