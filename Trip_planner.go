@@ -1,6 +1,7 @@
 
 package main
 
+
 import (
 	"encoding/json"
 	"fmt"
@@ -10,16 +11,9 @@ import (
 	"net/http"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/mgo.v2"
-        "gopkg.in/mgo.v2/bson"
-        "os"
+    "gopkg.in/mgo.v2/bson"
+    "os"
 )
-
-/*const (
-	WhiteHouseLat  float64 = 38.897939
-	WhiteHouseLong float64 = -77.036541
-	USCapitolLat   float64 = 38.890152
-	USCapitolLong  float64 = -77.009096
-)*/
 
 const (
 	// Uber API endpoint
@@ -98,7 +92,6 @@ func convertToMins(estimate int) int {
 	return estimate / 60
 }
 
-// Internal method that implements the Getter interface
 func (te *TimeEstimates) get(c *Client) error {
 	timeEstimateParams := map[string]string{
 		"start_latitude":  strconv.FormatFloat(te.StartLatitude, 'f', 2, 32),
@@ -208,11 +201,8 @@ func (c *Client) getRequest(endpoint string, params map[string]string) []byte {
 
 func main() {
 
-	//uber_api()
 	mux := httprouter.New()
     mux.POST("/trips",post)
-    //mux.GET("/locations/:id",get)
-    //mux.PUT("/locations/:id",put)
     server := http.Server{
             Addr:        "0.0.0.0:8080",
             Handler: mux,
@@ -234,7 +224,52 @@ func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
         http.Error(rw, "Bad Request, check request payload", http.StatusBadRequest)
         return
     }
-    oid := bson.ObjectIdHex(u.Start_loc)
+    var rest_loc []string
+    start := u.Start_loc
+	rest_loc = u.Remaining_loc
+	i:= len(u.Remaining_loc)-1
+	var temp = make([]int,i+1)
+	var route = make ([]string,i+1)
+	var j int
+	total_cost := 0
+	for i!=-1 {
+		for j=0; j<=i; j++ {
+		    temp[j] = uber_api(start, rest_loc[j])
+
+		}
+	min := temp[0]
+	index :=0
+	var k int
+	for k = 0; k < len(temp); k++{
+			if temp[k]<min {
+			min = temp[k]
+			index = k
+		}
+
+	}
+	start = rest_loc[index]
+	route[len(u.Remaining_loc)-(i+1)]=start
+	j:=0
+	for k =0;k<len(rest_loc);k++{
+		if (k!=index){
+			rest_loc[j] = rest_loc[k]
+			j=j+1
+		}
+	}
+	total_cost = total_cost + temp[index]
+	length := i
+	temp = make([]int,length)
+    i=i-1
+
+}
+    log.Println ("total cost is : ", total_cost)
+    log.Println ("best route : ",route)
+}
+
+func uber_api(Start_loc string,Remaining_loc string) int{
+
+	oid1:=bson.ObjectIdHex(Start_loc)
+	oid2:=bson.ObjectIdHex(Remaining_loc)
     sess, err := mgo.Dial("mongodb://Richa:Indore#1@ds041934.mongolab.com:41934/assignment_2_db")
     if err != nil {
        fmt.Printf("Can't connect to mongo, go error %v\n", err)
@@ -244,68 +279,72 @@ func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
     sess.SetSafe(&mgo.Safe{})
     collection := sess.DB("assignment_2_db").C("loc")
     var user UserResponse
-    err = collection.Find(bson.M{"_id":oid}).One(&user)
+    err = collection.Find(bson.M{"_id":oid1}).One(&user)
     if err != nil {
-       fmt.Fprintf(rw,"Record not found",err)
-       return
+    	log.Println("Record not found",err)
+       
     }  
-    
-}
-
-func uber_api(){
-
-	// Read API auth options
-	var options RequestOptions
+    var options RequestOptions
 	options.ServerToken = "VlGEE0x4Vy_xQ1-LMobj-4i6_xcv1Uo-mIlRNefb"
 	client := Create(&options)
 
-	// Retrieve products based on lat/long coords
-	pl := &Products{}
-	pl.Latitude = WhiteHouseLat
-	pl.Longitude = WhiteHouseLong
+    pl := &Products{}
+	pl.Latitude = user.Cc.Lat
+	pl.Longitude = user.Cc.Lng
 	if e := client.Get(pl); e != nil {
 		log.Fatal(e)
 	}
-
-	fmt.Println("Here are the Uber options available for your area: \n")
+	i:=0
+	var productid string
 	for _, product := range pl.Products {
-		if product.ProductId =="dee8691c-8b48-4637-b048-300eee72d58d"{
-			fmt.Println(product.DisplayName + ": " + product.Description)
+		if(i == 0){
+			productid = product.ProductId
 		}
+		i=i+1
+
 	}
 
-	// Retrieve price estimates based on start and end lat/long coords
-	pe := &PriceEstimates{}
-	pe.StartLatitude = WhiteHouseLat
-	pe.StartLongitude = WhiteHouseLong
-	pe.EndLatitude = USCapitolLat
-	pe.EndLongitude = USCapitolLong
+    pe := &PriceEstimates{}
+	pe.StartLatitude = user.Cc.Lat 
+	pe.StartLongitude = user.Cc.Lng
+	err = collection.Find(bson.M{"_id":oid2}).One(&user)
+    if err != nil {
+    	log.Println("Record not found",err)
+    }  
+	pe.EndLatitude = user.Cc.Lat
+	pe.EndLongitude = user.Cc.Lng	
+ 
 	if e := client.Get(pe); e != nil {
 		log.Fatal(e)
 	}
-
-	fmt.Println("\nHere are the Uber price estimates from The White House to the United States Capitol: \n")
+	var price_estimate int
 	for _, price := range pe.Prices {
-		if price.ProductId =="dee8691c-8b48-4637-b048-300eee72d58d"{
-		fmt.Println(price.DisplayName + ": " + price.Estimate + "; Surge: " + strconv.FormatFloat(price.SurgeMultiplier, 'f', 2, 32))
+		if price.ProductId == productid{
+		//fmt.Println(price.DisplayName + ": " + price.Estimate + "; Surge: " + strconv.FormatFloat(price.SurgeMultiplier, 'f', 2, 32))
+		//fmt.Println("display name : ",price.DisplayName)
+		//fmt.Println("Distance: ",price.Distance)
+		//fmt.Println("Duration : ",price.Duration)
+		//log.Println("Estimate : ",price.LowEstimate)
+		price_estimate = price.LowEstimate
 		}
 	}
 
 	// Retrieve ETA estimates based on start lat/long coords
 	te:= &TimeEstimates{}
-	te.StartLatitude = WhiteHouseLat
-	te.StartLongitude = WhiteHouseLong
+	te.StartLatitude = pe.StartLatitude
+	te.StartLongitude = pe.StartLongitude
 	if e := client.Get(te); e != nil {
 		log.Fatal(e)
 	}
 
-	fmt.Println("\nHere are the Uber ETA estimates if leaving from The White House: \n")
 	for n, eta := range te.Times {
-		if eta.ProductId =="dee8691c-8b48-4637-b048-300eee72d58d"{
-		fmt.Println(eta.DisplayName + ": " + strconv.Itoa(eta.Estimate/60))
+		if eta.ProductId ==productid{
+		//fmt.Println(eta.DisplayName + ": " + strconv.Itoa(eta.Estimate/60))
 		}
 		if n == len(te.Times)-1 {
 			fmt.Print("\n")
 		}
 	}
+	//log.Println ("inside price : ", price_estimate)
+	return price_estimate
 }
