@@ -226,7 +226,6 @@ func main() {
 func get(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
     log.Println("inside Get")
     identifier := p.ByName("id")
-    //log.Println("id is : ", identifier)
     if !bson.IsObjectIdHex(identifier) {
         rw.WriteHeader(404)
         return
@@ -234,11 +233,9 @@ func get(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
     oid := bson.ObjectIdHex(identifier)
     var get_response Trip
     get_response = find_record(oid)
-    //log.Println ("get response in get : \n", get_response)
     get_response.Next_loc_put =""
     get_response.Uber_eta_put = 0
     uj, _ := json.Marshal(get_response)
-    //log.Println ("uj value : ", uj)
     rw.Header().Set("Content-Type", "application/json")
     rw.WriteHeader(200)
     fmt.Fprintf(rw, "%s", uj)
@@ -356,19 +353,13 @@ func put(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
  					trip.Next_loc_put = trip.Best_route_put[i+1]
  			}
  		}
- 	}
- 	//log.Println("trip.Next_loc_put",trip.Next_loc_put)
- 	//eta = function to post request with start_location and next_location
- 	//trip.Uber_eta_put = 5 
+ 	} 
  	trip.Uber_eta_put = ride_request(start_location,next_location)
- 	//log.Println ("next loc is : ", next_location)
  	trip =Update_mongodb(trip)
- 	//if(trip.Start_loc_put != trip.Next_loc_put){
     uj, _ := json.Marshal(trip)
   	rw.Header().Set("Content-Type", "application/json")
   	rw.WriteHeader(201)
   	fmt.Fprintf(rw, "%s", uj)
-  	//}
 
 }
 
@@ -390,7 +381,6 @@ func ride_request(start_point string, next_point string ) int{
        
     }  
     var options RequestOptions
-	//options.ServerToken = "VlGEE0x4Vy_xQ1-LMobj-4i6_xcv1Uo-mIlRNefb"
 	//options.AccessToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOlsicHJvZmlsZSJdLCJzdWIiOiJjMWZjYjc3Yy0yOTAxLTQ2NmYtOWUyMi0xZTExMTZhYWVkMDYiLCJpc3MiOiJ1YmVyLXVzMSIsImp0aSI6IjYzNzhiMGNjLWZjMTktNDcyMC05ODUxLTJlNmU2YWU1Mjc3OSIsImV4cCI6MTQ1MDUwNzc3NCwiaWF0IjoxNDQ3OTE1NzczLCJ1YWN0IjoiQjNlSzF4ck5IR2lpcG0wbnVJVGo5bGdqazV3eGQxIiwibmJmIjoxNDQ3OTE1NjgzLCJhdWQiOiJrQTMzVkhwSFdWSUlKLWVyMlVVaHZlcDU2S3JuYjBoZiJ9.CWWNX2ElfbqQYJcu_YRsTUiqkSBBlMd6BoOnjroLoYHfnNxFeJI61CU8Bd7qkY2Z_u8WC3lkWJR-3WtJiTDdD-kph-Imw_Nqa3XQalrpsGwCyOvXS57_zWYb8v9E3o3GnRwsDr6TeoEmDkEdikKsK3RlQ6W-U9ywIE3IXXFwaJZyAqS-Q8U_D6NxZb0CQF8212pJSGn34cXEucRtiBJPzuS1VsXLcd6Tgk2AcOXlUU43ukzU_UCK5YBDWvbSXgDISMqBkZHFgxMSubWyTAtdEGtjL-N1Zm9TG-bB66mcPCvAeeg8aam48NX7yGCVasH6z2-U2FCjXSr00rKUcapleQ"
 	options.AccessToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOlsicHJvZmlsZSIsInJlcXVlc3QiLCJoaXN0b3J5Il0sInN1YiI6ImMxZmNiNzdjLTI5MDEtNDY2Zi05ZTIyLTFlMTExNmFhZWQwNiIsImlzcyI6InViZXItdXMxIiwianRpIjoiOTY1ZTFjNjgtOTY5Ni00ZDQ1LWFlMWQtMTk5MjU5NzQ2ZDJiIiwiZXhwIjoxNDUwNTkzNTM0LCJpYXQiOjE0NDgwMDE1MzMsInVhY3QiOiJ3R1JyMjlLVGRFdUNHY2ExcHJtVFZRQmhjWmlEc3UiLCJuYmYiOjE0NDgwMDE0NDMsImF1ZCI6ImtBMzNWSHBIV1ZJSUotZXIyVVVodmVwNTZLcm5iMGhmIn0.FUfhN28mAG6_xpSShae8wvTsIcXaH6eA19d056YooD8LTfdxm3vkyLTpm8buiAov9sJY3ww-F6xcKRlyNn9vAzN68jieOqZycJH4XDBh3jKP-qTuc__6N0jbTY4LmWmuCj0qk2oT6g7ERooL7JLKWFNggf9qQYyuX5JB9kJWIzbvB2bHr5ZopCEg6x0pLp1dFmvbrxDmx_QcV_poqA18RKrdvHJ-HgKbTIlGFRHGqg6Wjh5hUtOMOL1-JeCJHvc7DrqDNgVA1uo_GDPpO5a-lWSSwEVSET76A8kNu0JO-ewIZSjJh3MfoGa6Fi9cTx1Vk6gyXfYQyvcSuTC0OFCWFg"
 	client := Create(&options)	
@@ -420,22 +410,17 @@ func ride_request(start_point string, next_point string ) int{
 	ride_req.EndLat = user.Cc.Lat
 	ride_req.EndLng = user.Cc.Lng
 	buf, _ := json.Marshal(ride_req)
-	log.Println("data is ", ride_req)
 	body := bytes.NewBuffer(buf)
 	url := fmt.Sprintf(APIUrl, "requests?","access_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOlsicHJvZmlsZSIsInJlcXVlc3QiLCJoaXN0b3J5Il0sInN1YiI6ImMxZmNiNzdjLTI5MDEtNDY2Zi05ZTIyLTFlMTExNmFhZWQwNiIsImlzcyI6InViZXItdXMxIiwianRpIjoiOTY1ZTFjNjgtOTY5Ni00ZDQ1LWFlMWQtMTk5MjU5NzQ2ZDJiIiwiZXhwIjoxNDUwNTkzNTM0LCJpYXQiOjE0NDgwMDE1MzMsInVhY3QiOiJ3R1JyMjlLVGRFdUNHY2ExcHJtVFZRQmhjWmlEc3UiLCJuYmYiOjE0NDgwMDE0NDMsImF1ZCI6ImtBMzNWSHBIV1ZJSUotZXIyVVVodmVwNTZLcm5iMGhmIn0.FUfhN28mAG6_xpSShae8wvTsIcXaH6eA19d056YooD8LTfdxm3vkyLTpm8buiAov9sJY3ww-F6xcKRlyNn9vAzN68jieOqZycJH4XDBh3jKP-qTuc__6N0jbTY4LmWmuCj0qk2oT6g7ERooL7JLKWFNggf9qQYyuX5JB9kJWIzbvB2bHr5ZopCEg6x0pLp1dFmvbrxDmx_QcV_poqA18RKrdvHJ-HgKbTIlGFRHGqg6Wjh5hUtOMOL1-JeCJHvc7DrqDNgVA1uo_GDPpO5a-lWSSwEVSET76A8kNu0JO-ewIZSjJh3MfoGa6Fi9cTx1Vk6gyXfYQyvcSuTC0OFCWFg")
-	//url := "https://sandbox-api.uber.com/v1/requests?
-	//log.Println("url is :", url)
 	res, err := http.Post(url,"application/json",body)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	data, err := ioutil.ReadAll(res.Body)
-	log.Println("data return is", string(data))
 	var ride_response Ride_request_response
    	err = json.Unmarshal(data, &ride_response)
 	res.Body.Close()
-	log.Println("ride response",ride_response.Eta)
 	return ride_response.Eta
 
 }
@@ -452,7 +437,6 @@ func find_record(oid bson.ObjectId) Trip{
     var get_response Trip
     err = collection.Find(bson.M{"_id":oid}).One(&get_response)
     if err != nil {
-    // handle error
     	log.Println("Record not found",err)
     }  
     return get_response
@@ -478,7 +462,6 @@ func uber_api(Start_loc string,Remaining_loc string) Uber_api_response{
        
     }  
     var options RequestOptions
-	//options.ServerToken = "VlGEE0x4Vy_xQ1-LMobj-4i6_xcv1Uo-mIlRNefb"
 	options.AccessToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOlsicHJvZmlsZSJdLCJzdWIiOiJjMWZjYjc3Yy0yOTAxLTQ2NmYtOWUyMi0xZTExMTZhYWVkMDYiLCJpc3MiOiJ1YmVyLXVzMSIsImp0aSI6IjYzNzhiMGNjLWZjMTktNDcyMC05ODUxLTJlNmU2YWU1Mjc3OSIsImV4cCI6MTQ1MDUwNzc3NCwiaWF0IjoxNDQ3OTE1NzczLCJ1YWN0IjoiQjNlSzF4ck5IR2lpcG0wbnVJVGo5bGdqazV3eGQxIiwibmJmIjoxNDQ3OTE1NjgzLCJhdWQiOiJrQTMzVkhwSFdWSUlKLWVyMlVVaHZlcDU2S3JuYjBoZiJ9.CWWNX2ElfbqQYJcu_YRsTUiqkSBBlMd6BoOnjroLoYHfnNxFeJI61CU8Bd7qkY2Z_u8WC3lkWJR-3WtJiTDdD-kph-Imw_Nqa3XQalrpsGwCyOvXS57_zWYb8v9E3o3GnRwsDr6TeoEmDkEdikKsK3RlQ6W-U9ywIE3IXXFwaJZyAqS-Q8U_D6NxZb0CQF8212pJSGn34cXEucRtiBJPzuS1VsXLcd6Tgk2AcOXlUU43ukzU_UCK5YBDWvbSXgDISMqBkZHFgxMSubWyTAtdEGtjL-N1Zm9TG-bB66mcPCvAeeg8aam48NX7yGCVasH6z2-U2FCjXSr00rKUcapleQ"
 	client := Create(&options)
 
@@ -511,7 +494,6 @@ func uber_api(Start_loc string,Remaining_loc string) Uber_api_response{
 	if e := client.Get(pe); e != nil {
 		log.Fatal(e)
 	}
-	//var price_estimate int
 	var uber_response Uber_api_response
 	for _, price := range pe.Prices {
 		if price.ProductId == productid{
@@ -569,7 +551,6 @@ func Update_mongodb(trip Trip) Trip{
       		fmt.Println("Select record error ",err)
     	
     	}
-    	//log.Println ("trip data inside update after update :",trip_update)
     	return trip_update
 
 
