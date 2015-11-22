@@ -13,7 +13,7 @@ import (
 	"gopkg.in/mgo.v2"
     "gopkg.in/mgo.v2/bson"
     "os"
-    "math"
+    //"math"
     "bytes"
 )
 
@@ -252,6 +252,7 @@ func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
    err = json.Unmarshal(body, &u)
     if (err != nil ) {
         http.Error(rw, "Bad Request, check request payload", http.StatusBadRequest)
+        log.Println("error is : ", err)
         return
     }
     var rest_loc []string
@@ -304,7 +305,8 @@ func post(rw http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	final_response.Id_put = bson.NewObjectId()
 	final_response.Total_uber_cost_put = total_cost
 	final_response.Total_uber_duration_put = total_duration
-	final_response.Total_distance_put = math.Ceil(total_dist)
+	//final_response.Total_distance_put = math.Ceil(total_dist)
+	final_response.Total_distance_put = total_dist
 	final_response.Start_loc_put  = u.Start_loc
 	final_response.Best_route_put = route
 	final_response.Status_put = "Planning"
